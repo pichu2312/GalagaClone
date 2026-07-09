@@ -15,11 +15,18 @@ public class scr_player : MonoBehaviour
     [SerializeField] private float spd = 0;
 
     //Shooting
-    [SerializeField] public List<GameObject> bullets = new List<GameObject>();
-    private List<GameObject> activeBullets;
-    private List<Transform> activeBulletsTransform;
+    [SerializeField] public List<GameObject> editorBullets = new();
 
-    const float maxY = 1.6f;
+    public Queue<GameObject> bullets = new();
+    private List<GameObject> activeBullets = new();
+    private List<Transform> activeBulletsTransform = new();
+
+    //Shooting timers
+    private bool canFire = true;
+    [SerializeField] private float bulletWait;
+
+
+    const float maxY = 6f;
     [SerializeField] private float bulletSpd = 0.05f;
 
 
@@ -29,6 +36,14 @@ public class scr_player : MonoBehaviour
     {
         y = transform.localPosition.y;
         z = transform.localPosition.z;
+
+        //Add the bullet items in the editor to the actually used list
+        foreach (GameObject b in editorBullets)
+        {
+            bullets.Enqueue(b);
+        }
+        
+        editorBullets.Clear();
     }
 
     // Update is called once per frame
@@ -62,17 +77,21 @@ public class scr_player : MonoBehaviour
 
     public void ProcessPlayerFiring()
     {
-        if (Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.X)) {
-            GameObject newBullet = bullets.Dequeue();
-            Transform newBulletTransform = newBullet.transform;
+        if (canFire)
+        {
+            if (Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.X)) {
+                GameObject newBullet = bullets.Dequeue();
+                Transform newBulletTransform = newBullet.transform;
 
-            activeBullets.Add(newBullet);
-            activeBulletsTransform.Add(newBulletTransform);
+                activeBullets.Add(newBullet);
+                activeBulletsTransform.Add(newBulletTransform);
 
-            //Set to ships position
-            newBulletTransform.position = new Vector3(transform.position.x,y,z);
-            
-            
+                //Set to ships position
+                newBulletTransform.position = new Vector3(transform.position.x,y,z);
+                
+                canFire = false;
+                Invoke(nameof(ResetProjectile), bulletWait);
+            } 
         }
     }
 
@@ -85,10 +104,10 @@ public class scr_player : MonoBehaviour
                 GameObject currentObject = activeBullets[i];
                 Transform currentTransform = activeBulletsTransform[i];
 
-                currentTransform.position += new Vector3(0,currentTransform.position.y + bulletSpd,0);
+                currentTransform.position += new Vector3(0, bulletSpd,0);
 
                 //Remove the bullet if it's gone past the point of no return
-                if (currentTransform.localPosition.y > maxY)
+                if (currentTransform.position.y > maxY)
                 {
                     bullets.Enqueue(currentObject);
                     currentTransform.localPosition = Vector3.zero;
@@ -100,5 +119,10 @@ public class scr_player : MonoBehaviour
                 }
             }
         }
+    }
+
+    void ResetProjectile()
+    {
+        canFire = true;
     }
 }
