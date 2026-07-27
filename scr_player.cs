@@ -60,16 +60,17 @@ public class scr_player : MonoBehaviour
     public void ProcessPlayerMovement()
     {
         float move = 0;
+        float speed = spd * Time.deltaTime;
 
         //Move of 0 possible by pressing both to emulate galaga
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-            move -= spd;
+            move -= speed;
         }
         
         if (Input.GetKey(KeyCode.RightArrow))
         {
-            move += spd;
+            move += speed;
         }
 
         transform.localPosition = new Vector3(Math.Clamp(transform.localPosition.x + move, MinX, MaxX), y, z) ;
@@ -109,20 +110,31 @@ public class scr_player : MonoBehaviour
                 //Remove the bullet if it's gone past the point of no return
                 if (currentTransform.position.y > maxY)
                 {
-                    bullets.Enqueue(currentObject);
-                    currentTransform.localPosition = Vector3.zero;
-
-                    activeBullets.RemoveAt(i);
-                    activeBulletsTransform.RemoveAt(i);
-
+                    ResetBullet(currentObject, currentTransform);
                     i--;
                 }
             }
         }
     }
 
+    void ResetBullet(GameObject bullet, Transform bulletTrans)
+    {
+        bullets.Enqueue(bullet);
+        bulletTrans.localPosition = Vector3.zero;
+
+        activeBullets.Remove(bullet);
+        activeBulletsTransform.Remove(bulletTrans);
+    }
+
     void ResetProjectile()
     {
         canFire = true;
     }
+
+    public void BulletCollision(GameObject enemy, GameObject bullet)
+    {
+        ResetBullet(bullet, bullet.transform);
+        Destroy(enemy);
+    }
+
 }
