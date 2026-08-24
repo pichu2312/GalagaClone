@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 
 public class scr_player : MonoBehaviour
@@ -14,13 +15,6 @@ public class scr_player : MonoBehaviour
     float z;
     [SerializeField] private float spd = 0;
 
-    //Shooting
-    [SerializeField] public List<GameObject> editorBullets = new();
-
-    public Queue<GameObject> bullets = new();
-    private List<GameObject> activeBullets = new();
-    private List<Transform> activeBulletsTransform = new();
-
     //Shooting timers
     private bool canFire = true;
     [SerializeField] private float bulletWait;
@@ -29,33 +23,48 @@ public class scr_player : MonoBehaviour
     const float maxY = 6f;
     [SerializeField] private float bulletSpd = 0.05f;
 
+    public event Action EnemyDestroyed;
+    public event Action PlayerDestroyed;
+
+
+    public scr_enemies enemies;
+
+    public int score = 0;
+
+    bool active = false;
+
+    [SerializeField] SpriteRenderer sprite;
+    [SerializeField] public int lives = 2;
+
 
 
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         y = transform.localPosition.y;
         z = transform.localPosition.z;
 
-        //Add the bullet items in the editor to the actually used list
-        foreach (GameObject b in editorBullets)
-        {
-            bullets.Enqueue(b);
-        }
-        
-        editorBullets.Clear();
+        Invoke(nameof(ReactivatePlayer), 2);
     }
 
     // Update is called once per frame
     void Update()
     {
         ProcessPlayerInput();
-        ProcessBullets();
+        //ProcessBullets();
     }
     public void ProcessPlayerInput()
     {
-        ProcessPlayerMovement();
-        ProcessPlayerFiring();
+        if (active)
+        {
+            ProcessPlayerMovement();
+            ProcessPlayerFiring();
+        }
+
+        if (Input.GetKey(KeyCode.R))
+        {
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
     }
     public void ProcessPlayerMovement()
     {
@@ -67,63 +76,32 @@ public class scr_player : MonoBehaviour
         {
             move -= speed;
         }
-        
+
         if (Input.GetKey(KeyCode.RightArrow))
         {
             move += speed;
         }
 
-        transform.localPosition = new Vector3(Math.Clamp(transform.localPosition.x + move, MinX, MaxX), y, z) ;
+        transform.localPosition = new Vector3(Math.Clamp(transform.localPosition.x + move, MinX, MaxX), y, z);
     }
 
     public void ProcessPlayerFiring()
     {
         if (canFire)
         {
-            if (Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.X)) {
-                GameObject newBullet = bullets.Dequeue();
-                Transform newBulletTransform = newBullet.transform;
-
-                activeBullets.Add(newBullet);
-                activeBulletsTransform.Add(newBulletTransform);
-
-                //Set to ships position
-                newBulletTransform.position = new Vector3(transform.position.x,y,z);
-                
-                canFire = false;
-                Invoke(nameof(ResetProjectile), bulletWait);
-            } 
-        }
-    }
-
-    public void ProcessBullets()
-    {
-        if (activeBullets.Count > 0)
-        {
-            for (int i = 0; i < activeBullets.Count; i++)
+            if (Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.X))
             {
-                GameObject currentObject = activeBullets[i];
-                Transform currentTransform = activeBulletsTransform[i];
+                GameObject newBullet = scr_object_pool.SharedInstance.GetLaser(new Vector3(transform.position.x, y, z));
 
-                currentTransform.position += new Vector3(0, bulletSpd,0);
-
-                //Remove the bullet if it's gone past the point of no return
-                if (currentTransform.position.y > maxY)
+                if (newBullet != null)
                 {
-                    ResetBullet(currentObject, currentTransform);
-                    i--;
+                    newBullet.GetComponent<Bullet>().SetParent(0);
+                    canFire = false;
+                    Invoke(nameof(ResetProjectile), bulletWait);
                 }
+
             }
         }
-    }
-
-    void ResetBullet(GameObject bullet, Transform bulletTrans)
-    {
-        bullets.Enqueue(bullet);
-        bulletTrans.localPosition = Vector3.zero;
-
-        activeBullets.Remove(bullet);
-        activeBulletsTransform.Remove(bulletTrans);
     }
 
     void ResetProjectile()
@@ -133,8 +111,69 @@ public class scr_player : MonoBehaviour
 
     public void BulletCollision(GameObject enemy, GameObject bullet)
     {
-        ResetBullet(bullet, bullet.transform);
-        Destroy(enemy);
+        //ResetBullet(bullet, bullet.transform);
+        AddScore(enemy.GetComponent<Enemy>().scoreVal);
+        enemies.DestroyEnemy(enemy);
+
+        EnemyDestroyed?.Invoke();
+    }
+
+    public void AddScore(int score)
+    {
+        this.score += score;
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+
+        if (active)
+        {
+            bool cont = false;
+
+            if (other.TryGetComponent(out Enemy enemy))
+            {
+                cont = true;
+            }
+            else
+            {
+                other.TryGetComponent(out Bullet bullet);
+                if (bullet != null)
+                {
+                    if (bullet.type == 1)
+                    {
+                        cont = true;
+                    }
+                }
+            }
+
+            if (cont)
+            {
+                //Remove the player for a little bit
+                active = false;
+                sprite.enabled = false;
+
+                lives -= 1;
+
+                if (lives <= -1)
+                {
+                    //GAME OVER
+                }
+                else
+                {
+                    Invoke(nameof(ReactivatePlayer), 2f);
+                }
+
+
+                PlayerDestroyed?.Invoke();
+
+            }
+        }
+    }
+
+    private void ReactivatePlayer()
+    {
+        active = true;
+        sprite.enabled = true;
     }
 
 }
