@@ -50,37 +50,67 @@ public class scr_enemies : MonoBehaviour
 
     List<Wave> comingWaves = new();
 
+    //
+    int waveIndex = -1;
+
+    [SerializeField] private scr_player player;
+
+
+    void Awake()
+    {
+        if (player != null)
+        {
+            player.NewLevel += SpawnNextLevel;
+            player.StartMoving += BeginWaves;
+        }
+    }
 
 
     // Start is called before the first frame update
     void Start()
     {
-        SpawnWaves();
+        SpawnNextWave();
     }
 
-    private void SpawnWaves()
+    private void SpawnNextWave()
     {
-        //Create every wave
-        foreach (Wave w in waveSpawner.waves)
+        Wave w;
+
+        //Create all the waves until we reach the final one of this level
+        if (waveSpawner.waves.Count > 0)
         {
-            int count = 0;
-            //Needed dude to serialisation
-            w.Enemies = new List<Enemy>();
-            foreach (int i in w.enemyTypes)
+            do
             {
-                count++;
-                //Enemy e = Instantiate(enemyPrefab, w.spawnPoint + (Vector2)(count * enemySpacing * Vector3.Normalize(w.spawnPoint)), Quaternion.identity).GetComponent<Enemy>();
-                Enemy e = scr_object_pool.SharedInstance.GetEnemy(w.spawnPoint + (Vector2)(count * enemySpacing * Vector3.Normalize(w.spawnPoint))).GetComponent<Enemy>();
+                waveIndex++;
+                w = waveSpawner.waves[waveIndex];
 
-                //Initialise
-                e.Initialise(count, enemySpeed, i);
 
-                w.Enemies.Add(e);
-            }
-            comingWaves.Add(w);
+                //Needed dude to serialisation
+                w.Enemies = new List<Enemy>();
+                int count = 0;
+                foreach (int i in w.enemyTypes)
+                {
+                    count++;
+                    //Enemy e = Instantiate(enemyPrefab, w.spawnPoint + (Vector2)(count * enemySpacing * Vector3.Normalize(w.spawnPoint)), Quaternion.identity).GetComponent<Enemy>();
+                    Enemy e = scr_object_pool.SharedInstance.GetEnemy(w.spawnPoint + (Vector2)(count * enemySpacing * Vector3.Normalize(w.spawnPoint))).GetComponent<Enemy>();
 
-            //Invoke the spawn, always add 2 to account for the player starting
-            Invoke(nameof(SpawnWave), w.spawnTime + 2);
+                    //Initialise
+                    e.Initialise(count, enemySpeed, i);
+
+                    w.Enemies.Add(e);
+                }
+                comingWaves.Add(w);
+
+                //Invoke the spawn, always add 2 to account for the player starting
+            } while ((!w.FinalWaveOfLevel) && (waveIndex + 1 != waveSpawner.waves.Count));
+        }
+    }
+
+    void BeginWaves()
+    {
+        foreach (Wave w in comingWaves)
+        {
+            Invoke(nameof(SpawnWave), w.spawnTime);
         }
     }
 
@@ -304,76 +334,106 @@ public class scr_enemies : MonoBehaviour
         movingEnemies.Add(e);
     }
 
-    public void DestroyEnemy(GameObject enemy)
+    public bool EnemyHit(GameObject enemy)
     {
-        Wave foundWave = null;
-        Enemy foundEnemy = null;
 
-        //Go through waves to find the enemy and destroy it
+        (Enemy, Wave) foundEnemyAndWave = FindEnemyAndWave(enemy);
+        Enemy foundEnemy = foundEnemyAndWave.Item1;
+        Wave foundWave = foundEnemyAndWave.Item2;
+
+        //If it has 1 hit left then destroy it, elsewise, change it
+        if (foundEnemy != null)
+        {
+            //Check if we're gonna destroy it
+            if (foundEnemy.hits == 1)
+            {
+                DestroyEnemy(enemy, foundEnemy, foundWave);
+                return true;
+            }
+            else
+            {
+                foundEnemy.DealHit();
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    public (Enemy, Wave) FindEnemyAndWave(GameObject enemy)
+    {
+        //Go through waves to find the enemy and its wave
         foreach (Wave w in activeWaves)
         {
             foreach (Enemy e in w.Enemies)
             {
                 if (e.gameObject == enemy)
                 {
-                    foundWave = w;
-                    foundEnemy = e;
-                    break;
+                    return (e, w);
                 }
-            }
-
-            if (foundEnemy != null)
-            {
-                break;
             }
         }
 
+
+        //if not found, then it must be in the top grid
         foreach (Enemy e in movingEnemies)
         {
             if (e.gameObject == enemy)
             {
-                foundEnemy = e;
-                break;
+                return (e, null);
             }
         }
 
-        //If it has 1 hit left then destroy it, elsewise, change it
-        if (enemy.GetComponent<Enemy>().hits == 1)
+        //If all has failed return null
+        return (null, null);
+    }
+
+    public void DestroyEnemy(GameObject enemyObject, Enemy foundEnemy, Wave foundWave)
+    {
+        enemyObject.SetActive(false);
+
+        //Otherwise it's in a wave
+        if (foundWave != null)
         {
-            //If it's not in a wave, it's in the grid, which we can just remove
-            enemy.SetActive(false);
+            foundWave.Enemies.Remove(foundEnemy);
 
-            if (foundEnemy != null)
+            //Check if there are no enemies in this wave to destroy it
+            if (!foundWave.CheckActive())
             {
-                if (foundWave != null)
-                {
-                    foundWave.Enemies.Remove(foundEnemy);
-
-                    //Check if there are no enemies in this wave to destroy it
-                    if (!foundWave.CheckActive())
-                    {
-                        activeWaves.Remove(foundWave);
-                    }
-                }
-                //If there was an enemy but not a wave it must be in moving enemies
-                else
-                {
-                    movingEnemies.Remove(foundEnemy);
-                }
+                activeWaves.Remove(foundWave);
             }
         }
+        //If there was an enemy but not a wave it must be in moving enemies
         else
         {
-            enemy.GetComponent<Enemy>().DealHit();
+            movingEnemies.Remove(foundEnemy);
         }
-
-
-
 
     }
 
+    public bool IsAllEnemiesGone()
+    {
 
+        //Check if everything is empty, as then it's new level time
+        if ((movingEnemies.Count == 0) && (activeWaves.Count == 0))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    void SpawnNextLevel()
+    {
+        //Destroy all lasers
+
+        SpawnNextWave();
+    }
 }
+
+
+
+
 
 [System.Serializable]
 public class Wave
@@ -396,6 +456,8 @@ public class Wave
     //private bool active = false;
 
     public bool Active { get; set; } = false;
+
+    public bool FinalWaveOfLevel;
 
 
     //Create a wave on the fly for strafing patterns

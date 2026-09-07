@@ -29,6 +29,10 @@ public class Bullet : MonoBehaviour
         playerScript = player.GetComponent<scr_player>();
         enemiesScript = enemy.GetComponent<scr_enemies>();
 
+        if (playerScript != null)
+        {
+            playerScript.NewLevel += Destroy;
+        }
     }
 
     //Is this a player bullet or an enemy bullet?
@@ -88,5 +92,10 @@ public class Bullet : MonoBehaviour
 
         }
 
+    }
+
+    private void Destroy()
+    {
+        gameObject.SetActive(false);
     }
 }

@@ -20,4 +20,5 @@ public class Scrobj_waves : ScriptableObject
         */
 
     public List<Wave> waves = new();
+    
 }

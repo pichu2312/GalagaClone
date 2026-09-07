@@ -15,6 +15,7 @@ public class scr_ui : MonoBehaviour
 
     [SerializeField] private TextMeshProUGUI middleText;
 
+    int stage = 0;
     
 
 
@@ -28,10 +29,10 @@ public class scr_ui : MonoBehaviour
         {
             player.EnemyDestroyed += OnEnemyDestroy;
             player.PlayerDestroyed += OnPlayerDestroyed; 
+            player.NewLevel += OnNewLevel;
         }
 
-        SetMiddleText("Stage 1", 2);
-
+        OnNewLevel();
     }
 
     void Start()
@@ -59,6 +60,12 @@ public class scr_ui : MonoBehaviour
             UpdateLives();
             SetMiddleText("Ready", 2);
         }
+    }
+
+    private void OnNewLevel()
+    {
+        stage++;
+        SetMiddleText("Stage " + stage, 2);
     }
 
     private void UpdateScore()

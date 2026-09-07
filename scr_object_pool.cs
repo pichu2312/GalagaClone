@@ -22,10 +22,7 @@ public class scr_object_pool  : MonoBehaviour
     void Awake()
     {
         SharedInstance = this;
-    }
 
-    void Start()
-    {
         for (int i = 0; i < amountToPool.Length; i++)
         {
             pooledObjects[i] = new List<GameObject>();
@@ -37,7 +34,6 @@ public class scr_object_pool  : MonoBehaviour
                 pooledObjects[i].Add(tmp);
             }
         }
-
     }
 
     private GameObject GetPooledObject(int type, Vector3 position)
