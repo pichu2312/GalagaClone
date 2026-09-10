@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Numerics;
 using Unity.Mathematics;
 using Unity.VisualScripting;
@@ -43,6 +44,7 @@ public class scr_player : MonoBehaviour
     bool active = true;
 
     [SerializeField] SpriteRenderer sprite;
+    [SerializeField] Rigidbody2D body;
     [SerializeField] public int lives = 2;
 
 
@@ -51,13 +53,20 @@ public class scr_player : MonoBehaviour
     [SerializeField] public Renderer renderer;
     [SerializeField] public GameObject background;
 
+    [SerializeField] public GameObject camera;
+
     [SerializeField] public float transitionSpeed;
 
     //private float transitionDir = -1;
-    private float targetRotation = -90;
+    private float targetRotation;
 
-    private float currentRotation = 0;
-    private bool transitioning = true;
+    private float currentRotation;
+    private bool transitioning = false;
+
+    [SerializeField] public scr_flappy flappy;
+
+    [SerializeField] float flapForce = 5f;
+
 
 
 
@@ -76,6 +85,8 @@ public class scr_player : MonoBehaviour
         z = transform.localPosition.z;
 
         Invoke(nameof(BeginAgain), 2);
+
+        currentRotation = camera.transform.eulerAngles.z;
     }
 
     // Update is called once per frame
@@ -97,7 +108,7 @@ public class scr_player : MonoBehaviour
                     ProcessPlayerFiring();
                     break;
                 case Mode.Flappy:
-                    ProcessPlayerMovement();
+                    ProcessPlayerFlying();
                     break;
 
             }
@@ -107,6 +118,15 @@ public class scr_player : MonoBehaviour
         if (Input.GetKey(KeyCode.R))
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
+        if (Input.GetKey(KeyCode.T))
+        {
+            if (!transitioning)
+            {
+                BeginTransition();
+            }
+
         }
     }
     public void ProcessPlayerMovement()
@@ -163,10 +183,32 @@ public class scr_player : MonoBehaviour
             //Check if everything is empty, as then it's new level time
             if (enemies.IsAllEnemiesGone())
             {
+                /*
                 NewLevel?.Invoke();
                 Invoke(nameof(BeginAgain), 2);
+                */
+                BeginTransition();
             }
         }
+
+    }
+
+    public void ProcessPlayerFlying()
+    {
+        //Destroy if touching the side
+        //actually its x value but shh
+        float y = transform.position.x;
+
+        if ((y < -4.5f) || (y > 4.5f))
+        {
+            DestroyPlayer();
+        }
+        else if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X))
+        {
+            //body.AddForce(Vector2.left * flapForce, ForceMode2D.Impulse);
+            body.linearVelocity = new Vector2(-flapForce, body.linearVelocityY);
+        }
+
 
     }
 
@@ -200,25 +242,30 @@ public class scr_player : MonoBehaviour
 
             if (cont)
             {
-                //Remove the player for a little bit
-                DeactivePlayer();
 
-                lives -= 1;
-
-                if (lives <= -1)
-                {
-                    //GAME OVER
-                }
-                else
-                {
-                    Invoke(nameof(ReactivatePlayer), 2f);
-                }
-
-
-                PlayerDestroyed?.Invoke();
-
+                DestroyPlayer();
             }
         }
+    }
+
+    private void DestroyPlayer()
+    {
+        //Remove the player for a little bit
+        DeactivePlayer();
+
+        lives -= 1;
+
+        if (lives <= -1)
+        {
+            //GAME OVER
+        }
+        else
+        {
+            Invoke(nameof(ReactivatePlayer), 2f);
+        }
+
+
+        PlayerDestroyed?.Invoke();
     }
 
     private void BeginAgain()
@@ -230,12 +277,23 @@ public class scr_player : MonoBehaviour
     {
         active = true;
         sprite.enabled = true;
+
+        //Reset bodytype if it's flappy
+        if (state == Mode.Flappy)
+        {
+            body.bodyType = RigidbodyType2D.Dynamic;
+
+        }
     }
 
     private void DeactivePlayer()
     {
         active = false;
         sprite.enabled = false;
+        //set x to 0
+        transform.position = new Vector3(0, y, z);
+
+        body.bodyType = RigidbodyType2D.Static;
     }
 
     private void MoveBackground()
@@ -245,16 +303,18 @@ public class scr_player : MonoBehaviour
         renderer.sharedMaterial.SetTextureOffset("_MainTex", offset);
     }
 
-    private void BeginTransition()
+    public void BeginTransition()
     {
         if (state == Mode.Galaga)
         {
-            targetRotation = 0;
+            targetRotation = 90;
         }
         else
         {
-            targetRotation = -90;
+            targetRotation = 0;
         }
+
+        transitioning = true;
     }
 
     private void TransitionStates()
@@ -268,18 +328,18 @@ public class scr_player : MonoBehaviour
                 transitionSpeed * Time.deltaTime
             );
 
-            transform.localRotation = Quaternion.Euler(0, 0, currentRotation);
-            background.transform.localRotation = Quaternion.Euler(0, 0, currentRotation);
-
+            //transform.localRotation = Quaternion.Euler(0, 0, currentRotation);
+            //background.transform.localRotation = Quaternion.Euler(0, 0, currentRotation);
+            camera.transform.localRotation = Quaternion.Euler(0, 0, currentRotation);
             //Move the player too
-            
+
 
 
             if (Mathf.Approximately(currentRotation, targetRotation))
             {
                 transitioning = false;
 
-                if (targetRotation == -90f)
+                if (targetRotation == 90)
                 {
                     EnterFlappy();
                 }
@@ -295,10 +355,28 @@ public class scr_player : MonoBehaviour
     private void EnterFlappy()
     {
         state = Mode.Flappy;
+
+        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
+
+        enemies.GetComponent<scr_enemies>().enabled = false;
+        enemies.GetComponent<scr_flappy>().enabled = true;
+
+        enemies.GetComponent<scr_flappy>().GeneratePipes(3);
     }
 
     private void EnterGalaga()
     {
         state = Mode.Galaga;
+        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
+
+        enemies.GetComponent<scr_enemies>().enabled = true;
+        enemies.GetComponent<scr_flappy>().enabled = false;
+
+        //Just keep doing the same wave
+        enemies.GetComponent<scr_enemies>().waveIndex--;
+        enemies.GetComponent<scr_enemies>().SpawnNextWave();
+        
+
+        Invoke(nameof(BeginAgain), 2);
     }
 }

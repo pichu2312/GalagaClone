@@ -51,7 +51,7 @@ public class scr_enemies : MonoBehaviour
     List<Wave> comingWaves = new();
 
     //
-    int waveIndex = -1;
+    public int waveIndex = -1;
 
     [SerializeField] private scr_player player;
 
@@ -72,7 +72,7 @@ public class scr_enemies : MonoBehaviour
         SpawnNextWave();
     }
 
-    private void SpawnNextWave()
+    public void SpawnNextWave()
     {
         Wave w;
 
@@ -106,7 +106,7 @@ public class scr_enemies : MonoBehaviour
         }
     }
 
-    void BeginWaves()
+    public void BeginWaves()
     {
         foreach (Wave w in comingWaves)
         {
@@ -203,21 +203,7 @@ public class scr_enemies : MonoBehaviour
             strafing = false;
             if (!strafing)
             {
-                List<Enemy> activeEnemies = new List<Enemy>();
-
-                //Select, at most two enemies to begin strafing
-                for (int i = 0; i < enemySpaces.GetLength(0); i++)
-                {
-                    for (int j = 0; j < enemySpaces.GetLength(1); j++)
-                    {
-                        Enemy e = enemySpaces[i, j];
-
-                        if (e != null)
-                        {
-                            activeEnemies.Add(e);
-                        }
-                    }
-                }
+                List<Enemy> activeEnemies = GetEnemiesInGrid();
 
                 //Check enemies are still alive to do this  
                 if (activeEnemies.Count > 0)
@@ -243,18 +229,22 @@ public class scr_enemies : MonoBehaviour
                         e.transform.SetParent(transform);
 
                         List<Vector2> movePoints = new List<Vector2>
-                    {
-                        //Add three movepoints, one to the centre, one a bit more down, and one off the screen
-                        new(0, 0),
-                        new(Random.Range(-3, 3), -4),
-                        new(Random.Range(-3, 3), bottomValue)
+                        {
+                            //Add three movepoints, one to the centre, one a bit more down, and one off the screen
+                            new(0, 0),
+                            new(Random.Range(-3, 3), -4),
+                            new(Random.Range(-3, 3), bottomValue)
 
-                    };
+                        };
 
 
                         Wave w = new Wave(movePoints, new List<Enemy> { e });
 
                         activeWaves.Add(w);
+
+                        //Then remove these naughty boys
+                        (int,int) pos = FindEnemyInGrid(e);
+                        enemySpaces[pos.Item1, pos.Item2] = null;
                     }
 
 
@@ -268,6 +258,51 @@ public class scr_enemies : MonoBehaviour
 
             }
         }
+    }
+
+    private List<Enemy> GetEnemiesInGrid()
+    {
+        List<Enemy> activeEnemies = new List<Enemy>();
+
+        //Select, at most two enemies to begin strafing
+        for (int i = 0; i < enemySpaces.GetLength(0); i++)
+        {
+            for (int j = 0; j < enemySpaces.GetLength(1); j++)
+            {
+                Enemy e = enemySpaces[i, j];
+
+                if (e != null)
+                {
+                    activeEnemies.Add(e);
+                }
+            }
+        }
+
+        return activeEnemies;
+    }
+
+    private (int, int) FindEnemyInGrid(Enemy findEnemy)
+    {
+        List<Enemy> activeEnemies = new List<Enemy>();
+
+        //Select, at most two enemies to begin strafing
+        for (int i = 0; i < enemySpaces.GetLength(0); i++)
+        {
+            for (int j = 0; j < enemySpaces.GetLength(1); j++)
+            {
+                Enemy e = enemySpaces[i, j];
+
+                if (e != null)
+                {
+                    if (findEnemy == e)
+                    {
+                        return (i, j);
+                    }
+                }
+            }
+        }
+
+        return (-1, -1);
     }
 
     private void FireBullet()
@@ -390,7 +425,6 @@ public class scr_enemies : MonoBehaviour
 
     public void DestroyEnemy(GameObject enemyObject, Enemy foundEnemy, Wave foundWave)
     {
-        enemyObject.SetActive(false);
 
         //Otherwise it's in a wave
         if (foundWave != null)
@@ -403,19 +437,26 @@ public class scr_enemies : MonoBehaviour
                 activeWaves.Remove(foundWave);
             }
         }
-        //If there was an enemy but not a wave it must be in moving enemies
-        else
+        //Then check moving enemies
+        else if (movingEnemies.Contains(foundEnemy))
         {
             movingEnemies.Remove(foundEnemy);
         }
+        //Then besides those two, it must be in the grid
+        else
+        {
+            (int, int) enemyPos = FindEnemyInGrid(foundEnemy);
+            enemySpaces[enemyPos.Item1, enemyPos.Item2] = null;
+        }
 
+        enemyObject.SetActive(false);
     }
 
     public bool IsAllEnemiesGone()
     {
 
         //Check if everything is empty, as then it's new level time
-        if ((movingEnemies.Count == 0) && (activeWaves.Count == 0))
+        if ((movingEnemies.Count == 0) && (activeWaves.Count == 0) && (GetEnemiesInGrid().Count == 0))
         {
             return true;
         }
