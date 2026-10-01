@@ -7,19 +7,20 @@ using UnityEngine.UIElements;
 
 public class Bullet : MonoBehaviour
 {
-    [SerializeField] GameObject player;
-    [SerializeField] GameObject enemy;
+    [SerializeField] protected GameObject player;
+    [SerializeField] protected GameObject enemy;
 
-    [SerializeField] scr_player playerScript;
-    [SerializeField] scr_enemies enemiesScript;
-    bool hasCollided = false;
-    bool destroy = false;
+    [SerializeField] protected scr_player playerScript;
+    [SerializeField] protected scr_enemies enemiesScript;
+    protected bool hasCollided = false;
+    protected bool destroy = false;
     public int type = 0;
 
-    [SerializeField] float bulletBasedSpd;
-    float bulletSpd;
-    [SerializeField] float maxY;
-    [SerializeField] float minY;
+    [SerializeField] protected float bulletBasedSpd;
+    protected float bulletSpd;
+
+    [SerializeField] protected float maxY;
+    [SerializeField] protected float minY;
 
     void Awake()
     {
@@ -74,7 +75,7 @@ public class Bullet : MonoBehaviour
             if (other.TryGetComponent(out Enemy enemy))
             {
                 playerScript.BulletCollision(other.gameObject, this.gameObject);
-                            destroy = true;
+                destroy = true;
 
             }
 
@@ -99,3 +100,7 @@ public class Bullet : MonoBehaviour
         gameObject.SetActive(false);
     }
 }
+
+
+
+

@@ -14,7 +14,7 @@ public class scr_object_pool  : MonoBehaviour
     public static scr_object_pool SharedInstance;
 
     [Tooltip("Pooling for various objects starting; enemies, enemy lasers, player lasers")]
-    public List<GameObject>[] pooledObjects = new List<GameObject>[2];
+    public List<GameObject>[] pooledObjects = new List<GameObject>[3];
     public GameObject[] objectToPool;
     public int[] amountToPool;
 
@@ -65,4 +65,12 @@ public class scr_object_pool  : MonoBehaviour
     {
         return GetPooledObject(1, position);
     }
+
+    public GameObject GetBall(Vector3 position)
+    {
+        return GetPooledObject(2, position);
+    }
+
+
+
 }

@@ -339,7 +339,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0a0bb6a348349747b7560f7c654a54d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spd: 3
+  galSpd: 3
+  breakSpd: 5
   bulletWait: 0.5
   bulletSpd: 0.05
   enemies: {fileID: 806611288}
@@ -352,8 +353,12 @@ MonoBehaviour:
   background: {fileID: 25284109}
   camera: {fileID: 963194225}
   transitionSpeed: 75
-  flappy: {fileID: 0}
+  flashLength: 0.2
+  invLength: 1.2
+  flappy: {fileID: 806611289}
+  breakout: {fileID: 806611290}
   flapForce: 4
+  invulnerable: 0
 --- !u!50 &696987428
 Rigidbody2D:
   serializedVersion: 5
@@ -438,6 +443,7 @@ GameObject:
   - component: {fileID: 806611287}
   - component: {fileID: 806611288}
   - component: {fileID: 806611289}
+  - component: {fileID: 806611290}
   m_Layer: 0
   m_Name: Enemies
   m_TagString: Enemies
@@ -505,6 +511,19 @@ MonoBehaviour:
   pipeSpacing: 7
   pipeSpeed: 2
   player: {fileID: 696987427}
+--- !u!114 &806611290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 806611286}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23bef48c2eb25a74896882bd25c6b3e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::scr_breakout
+  gridSpacing: 1
 --- !u!1001 &811560807
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -681,7 +700,8 @@ MonoBehaviour:
   objectToPool:
   - {fileID: 6308311374412004378, guid: 6ed38bb3ba12cb245ab96c529e144e72, type: 3}
   - {fileID: 5121527947479930366, guid: a05daeb5cd9607e45b8a0e338f53b9e4, type: 3}
-  amountToPool: 280000000a000000
+  - {fileID: 5121527947479930366, guid: a2346697c88548246abd1903cc3577c6, type: 3}
+  amountToPool: 280000000a00000001000000
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0

@@ -305,6 +305,30 @@ public class scr_enemies : MonoBehaviour
         return (-1, -1);
     }
 
+        private (int, int) FindEnemyInGrid(GameObject findEnemy)
+    {
+        List<Enemy> activeEnemies = new List<Enemy>();
+
+        //Select, at most two enemies to begin strafing
+        for (int i = 0; i < enemySpaces.GetLength(0); i++)
+        {
+            for (int j = 0; j < enemySpaces.GetLength(1); j++)
+            {
+                Enemy e = enemySpaces[i, j];
+
+                if (e != null)
+                {
+                    if (findEnemy == e.gameObject)
+                    {
+                        return (i, j);
+                    }
+                }
+            }
+        }
+
+        return (-1, -1);
+    }
+
     private void FireBullet()
     {
         //Fire a bullet from each enemy in the active wave
@@ -372,17 +396,19 @@ public class scr_enemies : MonoBehaviour
     public bool EnemyHit(GameObject enemy)
     {
 
-        (Enemy, Wave) foundEnemyAndWave = FindEnemyAndWave(enemy);
+        (Enemy, Wave, (int, int)) foundEnemyAndWave = FindEnemyAndWave(enemy);
         Enemy foundEnemy = foundEnemyAndWave.Item1;
         Wave foundWave = foundEnemyAndWave.Item2;
+        (int, int) foundPos = foundEnemyAndWave.Item3;
 
         //If it has 1 hit left then destroy it, elsewise, change it
         if (foundEnemy != null)
         {
+
             //Check if we're gonna destroy it
             if (foundEnemy.hits == 1)
             {
-                DestroyEnemy(enemy, foundEnemy, foundWave);
+                DestroyEnemy(enemy, foundEnemy, foundWave, foundPos);
                 return true;
             }
             else
@@ -395,7 +421,7 @@ public class scr_enemies : MonoBehaviour
         return false;
     }
 
-    public (Enemy, Wave) FindEnemyAndWave(GameObject enemy)
+    public (Enemy, Wave, (int, int)) FindEnemyAndWave(GameObject enemy)
     {
         //Go through waves to find the enemy and its wave
         foreach (Wave w in activeWaves)
@@ -404,26 +430,27 @@ public class scr_enemies : MonoBehaviour
             {
                 if (e.gameObject == enemy)
                 {
-                    return (e, w);
+                    return (e, w, (-1, -1));
                 }
             }
         }
 
 
-        //if not found, then it must be in the top grid
+        //if not found, then it must be an enemy moving into the grid
         foreach (Enemy e in movingEnemies)
         {
             if (e.gameObject == enemy)
             {
-                return (e, null);
+                return (e, null, (-1, -1));
             }
         }
 
-        //If all has failed return null
-        return (null, null);
+        //if not found, then it must be in the top grid
+        (int, int) enemyPos = FindEnemyInGrid(enemy);
+        return (enemySpaces[enemyPos.Item1, enemyPos.Item2], null, enemyPos);
     }
 
-    public void DestroyEnemy(GameObject enemyObject, Enemy foundEnemy, Wave foundWave)
+    public void DestroyEnemy(GameObject enemyObject, Enemy foundEnemy, Wave foundWave, (int, int) pos)
     {
 
         //Otherwise it's in a wave
@@ -444,9 +471,8 @@ public class scr_enemies : MonoBehaviour
         }
         //Then besides those two, it must be in the grid
         else
-        {
-            (int, int) enemyPos = FindEnemyInGrid(foundEnemy);
-            enemySpaces[enemyPos.Item1, enemyPos.Item2] = null;
+        {;
+            enemySpaces[pos.Item1, pos.Item2] = null;
         }
 
         enemyObject.SetActive(false);

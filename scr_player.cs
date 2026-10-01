@@ -19,7 +19,11 @@ public class scr_player : MonoBehaviour
     const float MinX = -MaxX;
     float y;
     float z;
-    [SerializeField] private float spd = 0;
+    [SerializeField] private float galSpd = 0;
+    [SerializeField] private float breakSpd = 0;
+
+    private float spd = 0;
+
 
     //Shooting timers
     private bool canFire = true;
@@ -56,6 +60,9 @@ public class scr_player : MonoBehaviour
     [SerializeField] public GameObject camera;
 
     [SerializeField] public float transitionSpeed;
+    [SerializeField] float flashLength = 0.2f;
+    [SerializeField] float invLength = 1.2f;
+
 
     //private float transitionDir = -1;
     private float targetRotation;
@@ -64,18 +71,23 @@ public class scr_player : MonoBehaviour
     private bool transitioning = false;
 
     [SerializeField] public scr_flappy flappy;
+    [SerializeField] public scr_breakout breakout;
+
 
     [SerializeField] float flapForce = 5f;
 
+    public bool invulnerable = true;
+    private Coroutine toggleCoroutine;
 
-
-
-    private enum Mode
+    Ball ball;
+    public enum Mode
     {
         Galaga,
-        Flappy
+        Flappy,
+        Breakout
     }
 
+    private Mode newState;
     private Mode state = Mode.Galaga;
 
     // Start is called before the first frame update
@@ -110,11 +122,22 @@ public class scr_player : MonoBehaviour
                 case Mode.Flappy:
                     ProcessPlayerFlying();
                     break;
+                case Mode.Breakout:
+                    ProcessPlayerMovement();
+                    ProcessPlayerFiringBall();
+                    break;
 
             }
 
         }
 
+
+        DebugTransition();
+
+    }
+
+    private void DebugTransition()
+    {
         if (Input.GetKey(KeyCode.R))
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
@@ -124,7 +147,25 @@ public class scr_player : MonoBehaviour
         {
             if (!transitioning)
             {
-                BeginTransition();
+                BeginTransition(Mode.Galaga);
+            }
+
+        }
+
+        if (Input.GetKey(KeyCode.Y))
+        {
+            if (!transitioning)
+            {
+                BeginTransition(Mode.Flappy);
+            }
+
+        }
+
+        if (Input.GetKey(KeyCode.U))
+        {
+            if (!transitioning)
+            {
+                BeginTransition(Mode.Breakout);
             }
 
         }
@@ -132,7 +173,8 @@ public class scr_player : MonoBehaviour
     public void ProcessPlayerMovement()
     {
         float move = 0;
-        float speed = spd * Time.deltaTime;
+        float speed;
+        speed = (state == Mode.Galaga ? spd : -spd) * Time.deltaTime;
 
         //Move of 0 possible by pressing both to emulate galaga
         if (Input.GetKey(KeyCode.LeftArrow))
@@ -187,7 +229,28 @@ public class scr_player : MonoBehaviour
                 NewLevel?.Invoke();
                 Invoke(nameof(BeginAgain), 2);
                 */
-                BeginTransition();
+                BeginTransition(Mode.Flappy);
+            }
+        }
+
+    }
+
+    public void BallCollision(GameObject enemy, GameObject bullet)
+    {
+        //If true we've destroyed the enemy
+        if (breakout.EnemyHit(enemy))
+        {
+            AddScore(enemy.GetComponent<Enemy>().scoreVal);
+            EnemyDestroyed?.Invoke();
+
+            //Check if everything is empty, as then it's new level time
+            if (breakout.IsAllEnemiesGone())
+            {
+                /*
+                NewLevel?.Invoke();
+                Invoke(nameof(BeginAgain), 2);
+                */
+                BeginTransition(Mode.Galaga);
             }
         }
 
@@ -212,6 +275,15 @@ public class scr_player : MonoBehaviour
 
     }
 
+    public void ProcessPlayerFiringBall()
+    {
+        if (Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.X))
+        {
+            ball.moving = true;
+            ball.transform.SetParent(null);
+        }
+    }
+
     public void AddScore(int score)
     {
         this.score += score;
@@ -222,33 +294,36 @@ public class scr_player : MonoBehaviour
 
         if (active)
         {
-            bool cont = false;
+            if (!invulnerable)
+            {
+                bool cont = false;
 
-            if (other.TryGetComponent(out Enemy enemy))
-            {
-                cont = true;
-            }
-            else
-            {
-                other.TryGetComponent(out Bullet bullet);
-                if (bullet != null)
+                if (other.TryGetComponent(out Enemy enemy))
                 {
-                    if (bullet.type == 1)
+                    cont = true;
+                }
+                else
+                {
+                    other.TryGetComponent(out Bullet bullet);
+                    if (bullet != null)
                     {
-                        cont = true;
+                        if (bullet.type == 1)
+                        {
+                            cont = true;
+                        }
                     }
                 }
-            }
 
-            if (cont)
-            {
+                if (cont)
+                {
 
-                DestroyPlayer();
+                    DestroyPlayer();
+                }
             }
         }
     }
 
-    private void DestroyPlayer()
+    public void DestroyPlayer()
     {
         //Remove the player for a little bit
         DeactivePlayer();
@@ -282,8 +357,16 @@ public class scr_player : MonoBehaviour
         if (state == Mode.Flappy)
         {
             body.bodyType = RigidbodyType2D.Dynamic;
-
         }
+        else if(state == Mode.Breakout)
+        {
+            ResetBall();
+        }
+
+        invulnerable = true;
+
+        toggleCoroutine = StartCoroutine(ToggleSprite());
+        Invoke(nameof(DisableInv), 2f);
     }
 
     private void DeactivePlayer()
@@ -303,17 +386,17 @@ public class scr_player : MonoBehaviour
         renderer.sharedMaterial.SetTextureOffset("_MainTex", offset);
     }
 
-    public void BeginTransition()
+    public void BeginTransition(Mode mode)
     {
-        if (state == Mode.Galaga)
+
+        switch (mode)
         {
-            targetRotation = 90;
-        }
-        else
-        {
-            targetRotation = 0;
+            case Mode.Galaga: targetRotation = 0; break;
+            case Mode.Flappy: targetRotation = 90; break;
+            case Mode.Breakout: targetRotation = 180; break;
         }
 
+        newState = mode;
         transitioning = true;
     }
 
@@ -338,14 +421,14 @@ public class scr_player : MonoBehaviour
             if (Mathf.Approximately(currentRotation, targetRotation))
             {
                 transitioning = false;
+                state = newState;
+                EnableGameScript();
 
-                if (targetRotation == 90)
+                switch (state)
                 {
-                    EnterFlappy();
-                }
-                else
-                {
-                    EnterGalaga();
+                    case Mode.Galaga: EnterGalaga(); break;
+                    case Mode.Flappy: EnterFlappy(); break;
+                    case Mode.Breakout: EnterBreakout(); break;
                 }
             }
 
@@ -354,29 +437,72 @@ public class scr_player : MonoBehaviour
 
     private void EnterFlappy()
     {
-        state = Mode.Flappy;
-
         GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
-
-        enemies.GetComponent<scr_enemies>().enabled = false;
-        enemies.GetComponent<scr_flappy>().enabled = true;
-
         enemies.GetComponent<scr_flappy>().GeneratePipes(3);
     }
 
     private void EnterGalaga()
     {
-        state = Mode.Galaga;
         GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
-
-        enemies.GetComponent<scr_enemies>().enabled = true;
-        enemies.GetComponent<scr_flappy>().enabled = false;
 
         //Just keep doing the same wave
         enemies.GetComponent<scr_enemies>().waveIndex--;
         enemies.GetComponent<scr_enemies>().SpawnNextWave();
-        
+
+        spd = galSpd;
 
         Invoke(nameof(BeginAgain), 2);
     }
+
+    private void EnterBreakout()
+    {
+        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
+
+        breakout.Initialise();
+
+        spd = breakSpd;
+        
+        ResetBall();
+    }
+
+    private void ResetBall()
+    {
+        GameObject b = scr_object_pool.SharedInstance.GetBall(new Vector2(transform.position.x, transform.position.y +1f));
+        b.transform.SetParent(transform);
+        ball = b.GetComponent<Ball>();
+        breakout.ball = b.GetComponent<Ball>();
+        ball.ResetSpeed();
+        ball.ResetDir();
+    }
+
+    private void EnableGameScript()
+    {
+        enemies.enabled = false;
+        flappy.enabled = false;
+        breakout.enabled = false;
+
+        switch (state)
+        {
+            case Mode.Galaga: enemies.enabled = true; break;
+            case Mode.Flappy: flappy.enabled = true; break;
+            case Mode.Breakout: breakout.enabled = true; break;
+        }
+    }
+
+    private void DisableInv()
+    {
+        invulnerable = false;
+        sprite.enabled = true;
+        StopCoroutine(toggleCoroutine);
+    }
+
+    IEnumerator ToggleSprite()
+    {
+        while (true)
+        {
+            sprite.enabled = !sprite.enabled;
+            yield return new WaitForSeconds(flashLength);
+        }
+    }
 }
+

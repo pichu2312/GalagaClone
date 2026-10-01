@@ -84,7 +84,7 @@ public class scr_flappy : MonoBehaviour
                     //Then check if we should stop
                     if (pipes.Count == 0)
                     {
-                        player.BeginTransition();
+                        player.BeginTransition(scr_player.Mode.Breakout);
                     }
 
                     break;
