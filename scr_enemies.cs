@@ -157,6 +157,7 @@ public class scr_enemies : MonoBehaviour
                 }
 
                 AddToBody(returnedEnemy);
+                w.Enemies.Remove(returnedEnemy);
 
 
                 //Check if there are no enemies in this wave to destroy it
@@ -495,6 +496,44 @@ public class scr_enemies : MonoBehaviour
         //Destroy all lasers
 
         SpawnNextWave();
+    }
+
+    public void Cleanup()
+    {
+        //Remove everywave and remove every enemy
+        foreach (Wave w in activeWaves)
+        {
+            foreach (Enemy e in w.Enemies)
+            {
+                e.gameObject.SetActive(false);
+            }
+
+            w.Enemies.Clear();
+        }
+        activeWaves.Clear();
+
+        foreach (Enemy e in movingEnemies)
+        {
+            e.gameObject.SetActive(false);
+        }
+        movingEnemies.Clear();
+
+        for (int i = 0; i < enemySpaces.GetLength(0); i++)
+        {
+            for (int j = 0; j < enemySpaces.GetLength(1); j++)
+            {
+                Enemy e = enemySpaces[i, j];
+
+                if (e != null)
+                {
+                   e.gameObject.SetActive(false);
+                }
+                else
+                {
+                    enemySpaces[i, j] = null;
+                }
+            }
+        }
     }
 }
 

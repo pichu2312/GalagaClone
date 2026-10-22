@@ -260,7 +260,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 696987424}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -3, z: 0}
   m_LocalScale: {x: 6, y: 6, z: 1}
   m_ConstrainProportionsScale: 0
@@ -347,8 +347,8 @@ MonoBehaviour:
   score: 0
   sprite: {fileID: 696987426}
   body: {fileID: 696987428}
-  lives: 2
-  scrollSpeed: 1
+  lives: 100
+  scrollSpeedBase: 0.5
   renderer: {fileID: 25284112}
   background: {fileID: 25284109}
   camera: {fileID: 963194225}
@@ -359,6 +359,8 @@ MonoBehaviour:
   breakout: {fileID: 806611290}
   flapForce: 4
   invulnerable: 0
+  crossAmount: 1
+  crossy: {fileID: 806611291}
 --- !u!50 &696987428
 Rigidbody2D:
   serializedVersion: 5
@@ -444,6 +446,7 @@ GameObject:
   - component: {fileID: 806611288}
   - component: {fileID: 806611289}
   - component: {fileID: 806611290}
+  - component: {fileID: 806611291}
   m_Layer: 0
   m_Name: Enemies
   m_TagString: Enemies
@@ -524,6 +527,31 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::scr_breakout
   gridSpacing: 1
+  ball: {fileID: 0}
+  yOffset: 2
+  ballMinSpd: 0.05
+  ballMaxSpd: 0.1
+--- !u!114 &806611291
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 806611286}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7623031146793b942a2399b755e06e71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::scr_crossy
+  flappy: {fileID: 806611289}
+  startX: 8
+  endX: -7
+  carSpeedItem1: 2
+  carSpeedItem2: 5
+  player: {fileID: 696987427}
+  pipeSpacingRangeItem1: 1
+  pipeSpacingRangeItem2: 3
+  chasingPipeSpd: -0.3
 --- !u!1001 &811560807
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -701,7 +729,7 @@ MonoBehaviour:
   - {fileID: 6308311374412004378, guid: 6ed38bb3ba12cb245ab96c529e144e72, type: 3}
   - {fileID: 5121527947479930366, guid: a05daeb5cd9607e45b8a0e338f53b9e4, type: 3}
   - {fileID: 5121527947479930366, guid: a2346697c88548246abd1903cc3577c6, type: 3}
-  amountToPool: 280000000a00000001000000
+  amountToPool: 460000000a00000001000000
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -1209,11 +1237,11 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 5966287400757202358, guid: 6ed38bb3ba12cb245ab96c529e144e72, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.8
+      value: 0.7
       objectReference: {fileID: 0}
     - target: {fileID: 5966287400757202358, guid: 6ed38bb3ba12cb245ab96c529e144e72, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 5.01
+      value: -7.5
       objectReference: {fileID: 0}
     - target: {fileID: 5966287400757202358, guid: 6ed38bb3ba12cb245ab96c529e144e72, type: 3}
       propertyPath: m_LocalPosition.z

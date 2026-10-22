@@ -12,15 +12,13 @@ public class Ball : Bullet
 
     public bool moving = false;
 
-    [SerializeField] float ballBaseSpd = 1;
-    [SerializeField] float ballMaxSpd = 5;
+    float ballBaseSpd = 1;
+    float ballMaxSpd = 5;
     float ballSpd = 1;
     
     
     void Update()
     {
-
-
         if (moving) {
             transform.position += new Vector3(Xdir * ballSpd, Ydir * ballSpd,0);
 
@@ -75,5 +73,14 @@ public class Ball : Bullet
     public void ResetDir()
     {
         Ydir = Math.Abs(Ydir);
+    }
+
+    public void Initialise(float ballBaseSpd, float ballMaxSpd)
+    {
+        this.ballBaseSpd = ballBaseSpd;
+        this.ballMaxSpd = ballMaxSpd;
+        moving = false;
+        ResetSpeed();
+        ResetDir();
     }
 }

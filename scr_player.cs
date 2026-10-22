@@ -53,7 +53,8 @@ public class scr_player : MonoBehaviour
 
 
     //Backgorund
-    [SerializeField] public float scrollSpeed;
+    [SerializeField] public float scrollSpeedBase;
+    private float scrollSpeed;
     [SerializeField] public Renderer renderer;
     [SerializeField] public GameObject background;
 
@@ -79,16 +80,32 @@ public class scr_player : MonoBehaviour
     public bool invulnerable = true;
     private Coroutine toggleCoroutine;
 
+    [SerializeField] public float crossAmount = 16;
+    [SerializeField] scr_crossy crossy;
+
     Ball ball;
     public enum Mode
     {
         Galaga,
         Flappy,
-        Breakout
+        Breakout,
+        Crossy
     }
 
     private Mode newState;
-    private Mode state = Mode.Galaga;
+    private Mode state  = Mode.Galaga;
+
+
+
+    public Mode getState()
+    {
+        return this.state;
+    }
+
+    public void setState(Mode state)
+    {
+        this.state = state;
+    }
 
     // Start is called before the first frame update
     void Awake()
@@ -99,6 +116,9 @@ public class scr_player : MonoBehaviour
         Invoke(nameof(BeginAgain), 2);
 
         currentRotation = camera.transform.eulerAngles.z;
+        spd = galSpd;
+
+        scrollSpeed = scrollSpeedBase;
     }
 
     // Update is called once per frame
@@ -125,6 +145,9 @@ public class scr_player : MonoBehaviour
                 case Mode.Breakout:
                     ProcessPlayerMovement();
                     ProcessPlayerFiringBall();
+                    break;
+                case Mode.Crossy:
+                    ProcessCrossy();
                     break;
 
             }
@@ -166,6 +189,15 @@ public class scr_player : MonoBehaviour
             if (!transitioning)
             {
                 BeginTransition(Mode.Breakout);
+            }
+
+        }
+
+        if (Input.GetKey(KeyCode.I))
+        {
+            if (!transitioning)
+            {
+                BeginTransition(Mode.Crossy);
             }
 
         }
@@ -250,7 +282,8 @@ public class scr_player : MonoBehaviour
                 NewLevel?.Invoke();
                 Invoke(nameof(BeginAgain), 2);
                 */
-                BeginTransition(Mode.Galaga);
+                ball.gameObject.SetActive(false);
+                BeginTransition(Mode.Crossy);
             }
         }
 
@@ -262,7 +295,7 @@ public class scr_player : MonoBehaviour
         //actually its x value but shh
         float y = transform.position.x;
 
-        if ((y < -4.5f) || (y > 4.5f))
+        if ((y < -4.5f) || (y > 4.5f) && (!transitioning))
         {
             DestroyPlayer();
         }
@@ -282,6 +315,27 @@ public class scr_player : MonoBehaviour
             ball.moving = true;
             ball.transform.SetParent(null);
         }
+    }
+
+    public void ProcessCrossy()
+    {
+        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X))
+        {
+            crossy.CrossRoads();
+        }
+
+        float a = 0;
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            a += 1;
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            a -= 1;
+        }
+
+        transform.position = new Vector3(Math.Clamp(transform.position.x + a, -3, 3), y, z);
     }
 
     public void AddScore(int score)
@@ -376,7 +430,8 @@ public class scr_player : MonoBehaviour
         //set x to 0
         transform.position = new Vector3(0, y, z);
 
-        body.bodyType = RigidbodyType2D.Static;
+        body.bodyType = RigidbodyType2D.Kinematic
+        ;
     }
 
     private void MoveBackground()
@@ -388,16 +443,45 @@ public class scr_player : MonoBehaviour
 
     public void BeginTransition(Mode mode)
     {
+        Cleanup();
 
         switch (mode)
         {
-            case Mode.Galaga: targetRotation = 0; break;
+            case Mode.Galaga: 
+            if (currentRotation == 270) {currentRotation = -90;}
+            targetRotation = 0; 
+            break;
             case Mode.Flappy: targetRotation = 90; break;
             case Mode.Breakout: targetRotation = 180; break;
+            case Mode.Crossy: 
+            if (currentRotation == 0) {currentRotation = 360;}
+            targetRotation = 270; 
+            break;
         }
 
         newState = mode;
         transitioning = true;
+    }
+
+    //Called when transitiong to a new state removing all the old junk we no longer need
+    private void Cleanup()
+    {
+        switch (state)
+        {
+            case Mode.Galaga: 
+            enemies.Cleanup();
+            break;    
+            case Mode.Flappy:
+            flappy.Cleanup();
+            break;
+            case Mode.Breakout:
+            breakout.Cleanup();
+            ball.gameObject.SetActive(false);
+            break;
+            case Mode.Crossy:
+            crossy.Cleanup();
+            break;
+        }
     }
 
     private void TransitionStates()
@@ -429,6 +513,7 @@ public class scr_player : MonoBehaviour
                     case Mode.Galaga: EnterGalaga(); break;
                     case Mode.Flappy: EnterFlappy(); break;
                     case Mode.Breakout: EnterBreakout(); break;
+                    case Mode.Crossy: EnterCrossy(); break;
                 }
             }
 
@@ -443,7 +528,7 @@ public class scr_player : MonoBehaviour
 
     private void EnterGalaga()
     {
-        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
+        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
 
         //Just keep doing the same wave
         enemies.GetComponent<scr_enemies>().waveIndex--;
@@ -456,7 +541,7 @@ public class scr_player : MonoBehaviour
 
     private void EnterBreakout()
     {
-        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Static;
+        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
 
         breakout.Initialise();
 
@@ -465,14 +550,20 @@ public class scr_player : MonoBehaviour
         ResetBall();
     }
 
+    private void EnterCrossy()
+    {
+        GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
+        transform.position = new Vector3(0, y, z);
+        crossy.GeneratePipes(3);
+    }
+
     private void ResetBall()
     {
         GameObject b = scr_object_pool.SharedInstance.GetBall(new Vector2(transform.position.x, transform.position.y +1f));
         b.transform.SetParent(transform);
         ball = b.GetComponent<Ball>();
         breakout.ball = b.GetComponent<Ball>();
-        ball.ResetSpeed();
-        ball.ResetDir();
+        ball.Initialise(breakout.ballMinSpd, breakout.ballMaxSpd);
     }
 
     private void EnableGameScript()
@@ -480,12 +571,14 @@ public class scr_player : MonoBehaviour
         enemies.enabled = false;
         flappy.enabled = false;
         breakout.enabled = false;
+        crossy.enabled = false;
 
         switch (state)
         {
             case Mode.Galaga: enemies.enabled = true; break;
             case Mode.Flappy: flappy.enabled = true; break;
             case Mode.Breakout: breakout.enabled = true; break;
+            case Mode.Crossy: crossy.enabled = true; break;
         }
     }
 

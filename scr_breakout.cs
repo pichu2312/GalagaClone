@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+    using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.VisualScripting;
 using UnityEngine;
@@ -6,7 +6,7 @@ using UnityEngine;
 public class scr_breakout : MonoBehaviour
 {
     [SerializeField] float gridSpacing = 1f;
-    const int enemyX = 6;
+    const int enemyX = 5;
     const int enemyY = 4;
     private GameObject[,] enemySpaces = new GameObject[enemyX, enemyY];
     
@@ -15,6 +15,10 @@ public class scr_breakout : MonoBehaviour
 
     public Ball ball;
 
+    [SerializeField] public float yOffset;
+
+    [SerializeField] public float ballMinSpd = 1f;
+        [SerializeField] public float ballMaxSpd = 1f;
 
 
 
@@ -38,7 +42,7 @@ public class scr_breakout : MonoBehaviour
         {
             for (int j = 0; j < enemyY; j++)
             {
-                GameObject e = scr_object_pool.SharedInstance.GetEnemy(new Vector3((i * gridSpacing) + (gridSpacing - 3), j * gridSpacing, 0));
+                GameObject e = scr_object_pool.SharedInstance.GetEnemy(new Vector3((i * gridSpacing) + (gridSpacing - 3), (j * gridSpacing) + yOffset, 0));
                 enemySpaces[i, j] = e;
                 e.GetComponent<Enemy>().Initialise(1, 1, 0);
             }
@@ -97,6 +101,26 @@ public class scr_breakout : MonoBehaviour
     public bool IsAllEnemiesGone()
     {
         return enemyNo <= 0;
+    }
+
+    public void Cleanup()
+    {
+         for (int i = 0; i < enemySpaces.GetLength(0); i++)
+        {
+            for (int j = 0; j < enemySpaces.GetLength(1); j++)
+            {
+                GameObject e = enemySpaces[i, j];
+
+                if (e != null)
+                {
+                   e.SetActive(false);
+                }
+                else
+                {
+                    enemySpaces[i, j] = null;
+                }
+            }
+        }
     }
  
 }

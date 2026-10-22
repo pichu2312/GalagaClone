@@ -6,16 +6,16 @@ using UnityEngine;
 public class scr_flappy : MonoBehaviour
 {
     private List<Pipe> pipes = new();
-    [SerializeField] float startX;
-    [SerializeField] float endX;
-    [SerializeField] float startY;
-    [SerializeField] float endY;
-    [SerializeField] float spacing;
-    [SerializeField] int missingEnemies;
-    [SerializeField] int enemiesInPipe;
+    [SerializeField] public float startX;
+    [SerializeField] public float endX;
+    [SerializeField] public float startY;
+    [SerializeField] public float endY;
+    [SerializeField] public float spacing;
+    [SerializeField] public int missingEnemies;
+    [SerializeField] public int enemiesInPipe;
 
-    [SerializeField] float pipeSpacing;
-    [SerializeField] float pipeSpeed;
+    [SerializeField] public float pipeSpacing;
+    [SerializeField] public float pipeSpeed;
 
     [SerializeField] private scr_player player;
 
@@ -91,10 +91,7 @@ public class scr_flappy : MonoBehaviour
                 }
                 else
                 {
-                    foreach (GameObject e in p.pipe)
-                    {
-                        e.transform.position = new Vector3( e.transform.position.x, p.xPos, e.transform.position.z);
-                    }
+                    p.UpdateEnemieX();
                 }
 
             }
@@ -111,6 +108,15 @@ public class scr_flappy : MonoBehaviour
         }
     }
 
+    public void Cleanup()
+    {
+        foreach (Pipe p in pipes)
+        {
+            p.Deactivate();
+            pipes.Remove(p);
+        }
+    }
+
 }
 
 public class Pipe
@@ -120,12 +126,16 @@ public class Pipe
     public List<float> yPos;
 
     public bool active = false;
+    
+    //Only used for crossy pipes
+    public int posOrNeg = 0;
+    public float carSpeed = 0;
 
     public void InitialiseEnemies()
     {
         foreach (float f in yPos)
         {
-            pipe.Add(scr_object_pool.SharedInstance.GetEnemy(new Vector3(f,xPos,1)));
+            pipe.Add(scr_object_pool.SharedInstance.GetEnemy(new Vector3(f,xPos,0)));
         }
     }
 
@@ -134,6 +144,14 @@ public class Pipe
         foreach (GameObject e in pipe)
         {
             e.SetActive(false);
+        }
+    }
+
+    public void UpdateEnemieX()
+    {
+        foreach (GameObject e in pipe)
+        {
+            e.transform.position = new Vector3( e.transform.position.x, xPos, e.transform.position.z);
         }
     }
 
